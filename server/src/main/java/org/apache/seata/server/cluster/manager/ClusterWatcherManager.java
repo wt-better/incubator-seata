@@ -27,6 +27,7 @@ import javax.annotation.PostConstruct;
 import javax.servlet.AsyncContext;
 import javax.servlet.http.HttpServletResponse;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.DefaultHttpResponse;
@@ -41,6 +42,7 @@ import org.apache.seata.server.cluster.watch.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -66,11 +68,7 @@ public class ClusterWatcherManager implements ClusterChangeListener {
                 Optional.ofNullable(WATCHERS.remove(group))
                     .ifPresent(watchers -> watchers.parallelStream().forEach(watcher -> {
                         if (System.currentTimeMillis() >= watcher.getTimeout()) {
-                            HttpServletResponse httpServletResponse =
-                                (HttpServletResponse)((AsyncContext)watcher.getAsyncContext()).getResponse();
-                            watcher.setDone(true);
-                            httpServletResponse.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
-                            ((AsyncContext)watcher.getAsyncContext()).complete();
+                            notify(watcher, HttpStatus.NOT_MODIFIED.value());
                         }
                         if (!watcher.isDone()) {
                             // Re-register
@@ -94,17 +92,35 @@ public class ClusterWatcherManager implements ClusterChangeListener {
     }
 
     private void notify(Watcher<?> watcher) {
-        Channel channel  = (Channel) watcher.getAsyncContext();
-        if (channel instanceof Http2StreamChannel) {
-            // http2
-            channel.writeAndFlush(new DefaultHttp2DataFrame(Unpooled.wrappedBuffer(Unpooled.EMPTY_BUFFER)));
+        notify(watcher, HttpResponseStatus.OK.code());
+    }
+    private void notify(Watcher<?> watcher, int statusCode) {
+        Object ctx = watcher.getAsyncContext();
+        watcher.setDone(true);
+        if (ctx instanceof Channel) {
+            Channel channel = (Channel) ctx;
+            if (channel instanceof Http2StreamChannel) {
+                ByteBuf buf = Unpooled.buffer(4);
+                buf.writeInt(statusCode);
+                channel.writeAndFlush(new DefaultHttp2DataFrame(buf));
+                return;
+            } else {
+                // http
+                channel.writeAndFlush(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(statusCode)));
+            }
+            if (logger.isDebugEnabled()) {
+                logger.debug("notify cluster change event to: {}", channel.remoteAddress());
+            }
+
             return;
-        } else {
-            // http
-            channel.writeAndFlush(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK));
-        }
-        if (logger.isDebugEnabled()) {
-            logger.debug("notify cluster change event to: {}", channel.remoteAddress());
+        } else if (ctx instanceof AsyncContext) {
+            AsyncContext asyncContext = (AsyncContext) ctx;
+            HttpServletResponse httpServletResponse = (HttpServletResponse) asyncContext.getResponse();
+            if (logger.isDebugEnabled()) {
+                logger.debug("notify cluster change event to: {}", asyncContext.getRequest().getRemoteAddr());
+            }
+            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+            asyncContext.complete();
         }
     }
 
