@@ -27,9 +27,7 @@ import org.apache.seata.core.model.Resource;
 import org.apache.seata.core.model.ResourceManager;
 import org.apache.seata.integration.tx.api.util.ProxyUtil;
 import org.apache.seata.rm.DefaultResourceManager;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -43,10 +41,6 @@ public class ProxyUtilsTccTest {
 
     private final AtomicReference<String> branchReference = new AtomicReference<String>();
 
-    @BeforeEach
-    public void before() {
-        RootContext.bind(DEFAULT_XID);
-    }
 
     private final ResourceManager resourceManager = new ResourceManager() {
 
@@ -109,40 +103,48 @@ public class ProxyUtilsTccTest {
 
     @Test
     public void testTcc() {
-        TccParam tccParam = new TccParam(1, "abc@163.com");
-        List<String> listB = Collections.singletonList("b");
+        try {
+            //given
+            RootContext.bind(DEFAULT_XID);
 
-        DefaultResourceManager.mockResourceManager(BranchType.TCC, resourceManager);
+            TccParam tccParam = new TccParam(1, "abc@163.com");
+            List<String> listB = Collections.singletonList("b");
 
-        String result = tccActionProxy.prepare(null, 0, listB, tccParam);
+            DefaultResourceManager.mockResourceManager(BranchType.TCC, resourceManager);
 
-        //then
-        Assertions.assertEquals("a", result);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals("tccActionForCompatibleTest", branchReference.get());
+            String result = tccActionProxy.prepare(null, 0, listB, tccParam);
+
+            //then
+            Assertions.assertEquals("a", result);
+            Assertions.assertNotNull(result);
+            Assertions.assertEquals("tccActionForCompatibleTest", branchReference.get());
+        } finally {
+            RootContext.unbind();
+        }
     }
 
     @Test
     public void testTccThrowRawException() {
-        TccParam tccParam = new TccParam(1, "abc@163.com");
-        List<String> listB = Collections.singletonList("b");
+        try {
+            //given
+            RootContext.bind(DEFAULT_XID);
 
-        DefaultResourceManager.mockResourceManager(BranchType.TCC, resourceManager);
+            TccParam tccParam = new TccParam(1, "abc@163.com");
+            List<String> listB = Collections.singletonList("b");
 
-        //when
-        //then
-        Assertions.assertThrows(IllegalArgumentException.class, () -> tccActionProxy.prepareWithException(null, 0, listB, tccParam));
+            DefaultResourceManager.mockResourceManager(BranchType.TCC, resourceManager);
+
+            //when
+            //then
+            Assertions.assertThrows(IllegalArgumentException.class, () -> tccActionProxy.prepareWithException(null, 0, listB, tccParam));
+        } finally {
+            RootContext.unbind();
+        }
     }
 
     @Test
-    public void testTccImplementOtherMethod(){
+    public void testTccImplementOtherMethod() {
         Assertions.assertTrue(tccActionProxy.otherMethod());
     }
-
-    @AfterEach
-    public void clear() {
-        RootContext.unbind();
-    }
-
 
 }
