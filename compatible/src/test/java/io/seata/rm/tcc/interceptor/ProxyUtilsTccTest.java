@@ -41,6 +41,7 @@ public class ProxyUtilsTccTest {
 
     private final AtomicReference<String> branchReference = new AtomicReference<String>();
 
+
     private final ResourceManager resourceManager = new ResourceManager() {
 
         @Override
@@ -97,7 +98,7 @@ public class ProxyUtilsTccTest {
 
     };
 
-    private final NormalTccActionImpl tccActionProxy = ProxyUtil.createProxy(new NormalTccActionImpl());
+    private final NormalTccActionImpl tccActionProxy= ProxyUtil.createProxy(new NormalTccActionImpl());
 
 
     @Test
