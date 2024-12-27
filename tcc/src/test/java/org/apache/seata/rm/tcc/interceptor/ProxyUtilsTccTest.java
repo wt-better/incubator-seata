@@ -16,11 +16,6 @@
  */
 package org.apache.seata.rm.tcc.interceptor;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.apache.seata.core.context.RootContext;
 import org.apache.seata.core.exception.TransactionException;
 import org.apache.seata.core.model.BranchStatus;
@@ -35,12 +30,17 @@ import org.apache.seata.rm.tcc.TccParam;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+
 
 public class ProxyUtilsTccTest {
 
     private final String DEFAULT_XID = "default_xid";
 
-    AtomicReference<String> branchReference = new AtomicReference<String>();
+    AtomicReference<String> branchReference = new AtomicReference<>();
 
 
     ResourceManager resourceManager = new ResourceManager() {
@@ -104,36 +104,44 @@ public class ProxyUtilsTccTest {
 
     @Test
     public void testTcc() {
-        //given
-        RootContext.bind(DEFAULT_XID);
+        try {
+            //given
+            RootContext.bind(DEFAULT_XID);
 
-        TccParam tccParam = new TccParam(1, "abc@163.com");
-        List<String> listB = Arrays.asList("b");
+            TccParam tccParam = new TccParam(1, "abc@163.com");
+            List<String> listB = Arrays.asList("b");
 
-        DefaultResourceManager.mockResourceManager(BranchType.TCC, resourceManager);
+            DefaultResourceManager.mockResourceManager(BranchType.TCC, resourceManager);
 
-        //when
-        String result = tccActionProxy.prepare(null, 0, listB, tccParam);
+            //when
+            String result = tccActionProxy.prepare(null, 0, listB, tccParam);
 
-        //then
-        Assertions.assertEquals("a", result);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals("normalTccActionForTest", branchReference.get());
+            //then
+            Assertions.assertEquals("a", result);
+            Assertions.assertNotNull(result);
+            Assertions.assertEquals("normalTccActionForTest", branchReference.get());
+        } finally {
+            RootContext.unbind();
+        }
     }
 
     @Test
     public void testTccThrowRawException() {
-        //given
-        RootContext.bind(DEFAULT_XID);
+        try {
+            //given
+            RootContext.bind(DEFAULT_XID);
 
-        TccParam tccParam = new TccParam(1, "abc@163.com");
-        List<String> listB = Arrays.asList("b");
+            TccParam tccParam = new TccParam(1, "abc@163.com");
+            List<String> listB = Arrays.asList("b");
 
-        DefaultResourceManager.mockResourceManager(BranchType.TCC, resourceManager);
+            DefaultResourceManager.mockResourceManager(BranchType.TCC, resourceManager);
 
-        //when
-        //then
-        Assertions.assertThrows(IllegalArgumentException.class, () -> tccActionProxy.prepareWithException(null, 0, listB, tccParam));
+            //when
+            //then
+            Assertions.assertThrows(IllegalArgumentException.class, () -> tccActionProxy.prepareWithException(null, 0, listB, tccParam));
+        } finally {
+            RootContext.unbind();
+        }
     }
 
     @Test
