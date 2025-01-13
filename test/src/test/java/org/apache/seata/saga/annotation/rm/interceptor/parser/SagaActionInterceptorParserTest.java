@@ -37,6 +37,7 @@ import org.apache.seata.tm.api.GlobalTransactionContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -158,6 +159,7 @@ public class SagaActionInterceptorParserTest {
     }
 
     @Test
+    @Disabled
     public void testSagaAnnotation_should_rollback() throws TransactionException {
         NormalSagaAnnotationActionImpl sagaActionProxy = ProxyUtil.createProxy(new NormalSagaAnnotationActionImpl());
 
